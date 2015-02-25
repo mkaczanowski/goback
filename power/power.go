@@ -1,14 +1,14 @@
 package power
 
 import (
-"github.com/codeskyblue/go-sh"
-"os"
+	"github.com/codeskyblue/go-sh"
+	"os"
 )
 
 func init() {
 	_, err := os.Stat("/usr/bin/cpower")
 	if os.IsNotExist(err) {
-	      panic("File /usr/bin/cpower does not exist")
+		panic("File /usr/bin/cpower does not exist")
 	}
 }
 

@@ -4,12 +4,12 @@ import (
 	"./flasher"
 	"./job"
 	"./key"
+	"./power"
 	"flag"
 	"log"
 	"strconv"
 	"strings"
 	"sync"
-	"./power"
 )
 
 var wg sync.WaitGroup

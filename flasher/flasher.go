@@ -2,6 +2,7 @@ package flasher
 
 import (
 	"../config"
+	"../power"
 	"../step"
 	"../util"
 	"bufio"
@@ -10,7 +11,6 @@ import (
 	"os"
 	"strconv"
 	"time"
-	"../power"
 )
 
 type Board uint
@@ -199,7 +199,9 @@ func (fl *Flasher) flashParallella(quit chan bool, out chan string, n uint) {
 	start(boardName, out, stepList, reader, writer)
 }
 
-func start(boardName string, out chan string, sl *step.StepList, r *bufio.Reader, w *bufio.Writer) {
+func start(boardName string, out chan string, sl *step.StepList,
+	r *bufio.Reader, w *bufio.Writer) {
+
 	curStep := sl.Head
 	serialOutput := make(chan string)
 	quit := make(chan bool)
