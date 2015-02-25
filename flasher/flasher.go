@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"../power"
 )
 
 type Board uint
@@ -98,6 +99,7 @@ func (fl *Flasher) flashOdroid(quit chan bool, out chan string, n uint) {
 		quit <- true
 	}()
 
+	boardName := "odroid" + strconv.Itoa(int(n))
 	writer := bufio.NewWriter(s)
 	reader := bufio.NewReader(s)
 
@@ -106,7 +108,7 @@ func (fl *Flasher) flashOdroid(quit chan bool, out chan string, n uint) {
 
 	// Redirect serial to chanel and setup timeout
 	// start is blocking
-	start(out, stepList, reader, writer)
+	start(boardName, out, stepList, reader, writer)
 }
 
 func (fl *Flasher) flashWandboard(quit chan bool, out chan string, n uint) {
@@ -141,6 +143,7 @@ func (fl *Flasher) flashWandboard(quit chan bool, out chan string, n uint) {
 		quit <- true
 	}()
 
+	boardName := "wandboard" + strconv.Itoa(int(n))
 	writer := bufio.NewWriter(s)
 	reader := bufio.NewReader(s)
 
@@ -149,7 +152,7 @@ func (fl *Flasher) flashWandboard(quit chan bool, out chan string, n uint) {
 
 	// Redirect serial to chanel and setup timeout
 	// start is blocking
-	start(out, stepList, reader, writer)
+	start(boardName, out, stepList, reader, writer)
 }
 
 func (fl *Flasher) flashParallella(quit chan bool, out chan string, n uint) {
@@ -184,6 +187,7 @@ func (fl *Flasher) flashParallella(quit chan bool, out chan string, n uint) {
 		quit <- true
 	}()
 
+	boardName := "parallella" + strconv.Itoa(int(n))
 	writer := bufio.NewWriter(s)
 	reader := bufio.NewReader(s)
 
@@ -192,10 +196,10 @@ func (fl *Flasher) flashParallella(quit chan bool, out chan string, n uint) {
 
 	// Redirect serial to chanel and setup timeout
 	// start is blocking
-	start(out, stepList, reader, writer)
+	start(boardName, out, stepList, reader, writer)
 }
 
-func start(out chan string, sl *step.StepList, r *bufio.Reader, w *bufio.Writer) {
+func start(boardName string, out chan string, sl *step.StepList, r *bufio.Reader, w *bufio.Writer) {
 	curStep := sl.Head
 	serialOutput := make(chan string)
 	quit := make(chan bool)
@@ -204,8 +208,8 @@ func start(out chan string, sl *step.StepList, r *bufio.Reader, w *bufio.Writer)
 
 	// Try to restart
 	out <- "[ Pre ] Restart machine"
-	util.MustSendCmd(w, "reboot", true)
-	util.MustSendCmd(w, "reset", true)
+	power.Switch("off", boardName)
+	power.Switch("on", boardName)
 
 loop:
 	for {

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"./power"
 )
 
 var wg sync.WaitGroup
@@ -69,19 +70,30 @@ func getKey(board string) uint {
 func main() {
 	log.SetFlags(0)
 	fBoards := flag.String("boards", "", "List boards to flash")
+	fAction := flag.String("action", "flash", "What do you want to do? [flash, power_[on|off|switch]]")
 	flag.Parse()
 
-	fl = flasher.NewFlasher("tty.json")
-	sch := job.NewJobScheduler()
+	switch *fAction {
+	case "flash":
+		fl = flasher.NewFlasher("tty.json")
+		sch := job.NewJobScheduler()
 
-	boards := strings.Split(*fBoards, ",")
-	for i := range boards {
-		key := getKey(boards[i])
-		j := job.NewJob(key, sch)
-		j.SetHandler(flashDevice)
-		sch.StartJob(j)
-		wg.Add(1)
+		boards := strings.Split(*fBoards, ",")
+		for i := range boards {
+			key := getKey(boards[i])
+			j := job.NewJob(key, sch)
+			j.SetHandler(flashDevice)
+			sch.StartJob(j)
+			wg.Add(1)
+		}
+
+		wg.Wait()
+
+	case "power_on", "power_off", "power_switch":
+		s := strings.Split(*fAction, "_")
+		power.Switch(s[1], *fBoards)
+
+	default:
+		log.Println("Invalid option")
 	}
-
-	wg.Wait()
 }
