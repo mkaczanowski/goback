@@ -103,6 +103,19 @@ func GetOdroidStepList(w *bufio.Writer, c *step.StepConfig) *step.StepList {
 		Timeout:   60 * 3 * time.Second,
 	}
 
+	stRepartition:= &step.Step{
+	   OnTrigger: func() {
+			util.MustSendCmd(w, "", true)
+			command := "wget http://%s/odroid/resizefs.sh && chmod +x *.sh && ./resizefs.sh"
+			command = fmt.Sprintf(command, c.ServerAddr)
+			util.MustSendCmd(w, command, true)
+	   },
+	   Expect:    "Information",
+	   Msg:       "Repartition",
+	   SendProbe: true,
+	   Timeout:   80 * time.Second,
+        }
+
 	//stUpdateUboot := &step.Step{
 	//OnTrigger: func() {
 	//params := "--progress=dot:dots"
@@ -116,13 +129,48 @@ func GetOdroidStepList(w *bufio.Writer, c *step.StepConfig) *step.StepList {
 	//Timeout:   60 * 2 * time.Second,
 	//}
 
+	stReboot := &step.Step{
+		OnTrigger: func() {
+			util.MustSendCmd(w, "reboot", true)
+		},
+		Expect:    "Mounting root file system",
+		Msg:       "Reboot",
+		SendProbe: true,
+	   	Timeout:   20 * time.Second,
+	}
+
+	stResizeFS := &step.Step{
+		OnTrigger: func() {
+			util.MustSendCmd(w, "resize2fs /dev/mmcblk0p2 && touch /forcefsck && stat /forcefsck", true)
+		},
+		Trigger:    "Stopping save kernel messages",
+		Expect:    "empty file",
+		Msg:       "Resize FS",
+		SendProbe: true,
+		Timeout:   20 * time.Second,
+	}
+
 	stFinalReboot := &step.Step{
 		OnTrigger: func() {
+			util.MustSendCmd(w, "", true)
 			util.MustSendCmd(w, "reboot", true)
 		},
 		Expect:    "Mounting root file system",
 		Msg:       "Final reboot",
 		SendProbe: true,
+		Timeout:   40 * time.Second,
+	}
+
+	stPostinstall := &step.Step{
+		OnTrigger: func() {
+			util.MustSendCmd(w, "", true)
+			util.MustSendCmd(w, "wget http://beagle/postinstall/odroid/install.sh -O i.sh && chmod +x i.sh && ./i.sh >> /tmp/i.log 2>&1", true)
+		},
+		Trigger:   "Stopping save kernel messages",
+		Expect:    "",
+		Msg:       "Started postinstall",
+		SendProbe: true,
+		Timeout:   10 * time.Second,
 	}
 
 	stepList := step.NewList()
@@ -135,8 +183,12 @@ func GetOdroidStepList(w *bufio.Writer, c *step.StepConfig) *step.StepList {
 	stepList.Append(stBringUpEth0)
 	stepList.Append(stAssignIP)
 	stepList.Append(stWriteImage)
+	stepList.Append(stRepartition)
 	//stepList.Append(stUpdateUboot)
+	stepList.Append(stReboot)
+	stepList.Append(stResizeFS)
 	stepList.Append(stFinalReboot)
+	stepList.Append(stPostinstall)
 
 	return stepList
 }
