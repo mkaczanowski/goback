@@ -2,12 +2,17 @@ package util
 
 import (
 	"bufio"
+	"log"
 )
 
+var Debug bool
+
 func sendCmd(w *bufio.Writer, cmd string, flush bool) error {
-	//log.Println("Send comand: ", cmd)
-	_, err := w.Write([]byte(cmd))
-	w.WriteRune(rune(13))
+	_, err := w.Write([]byte(cmd+"\n"))
+
+	if Debug == true {
+		log.Println("Send comand: ", cmd)
+	}
 
 	if flush {
 		w.Flush()

@@ -29,6 +29,7 @@ type StepConfig struct {
 	Device        string
 	IpAddr        string
 	MacAddr       string
+	Hostname      string
 }
 
 type StepList struct {
@@ -45,15 +46,34 @@ func (st *Step) CheckTrigger(line string) {
 			st.OnTrigger()
 			st.Status.Triggered = true
 		} else {
-			if strings.Contains(line, st.Trigger) {
-				if st.OnTrigger != nil {
-					st.OnTrigger()
-				}
+			conds := strings.Split(st.Trigger, "|")
+			for _, cond := range conds{
+				if strings.Contains(line, cond) {
+					if st.OnTrigger != nil {
+						st.OnTrigger()
+					}
 
-				st.Status.Triggered = true
+					st.Status.Triggered = true
+					break
+				}
 			}
 		}
 	}
+}
+
+func (s *Step) Clone() *Step{
+	ns := &Step{
+		   Trigger:   s.Trigger,
+		   Expect:    s.Expect,
+		   Msg:       s.Msg,
+		   Next:      nil,
+		   OnTrigger: s.OnTrigger,
+		   Status:    s.Status,
+		   SendProbe: s.SendProbe,
+		   Timeout:   s.Timeout,
+	}
+
+	return ns
 }
 
 func (st *Step) GetTimeout() time.Duration {
@@ -64,7 +84,7 @@ func (st *Step) GetTimeout() time.Duration {
 }
 
 func (st *Step) CheckExpect(line string) bool {
-	if strings.Contains(line, st.Expect) {
+	if st.Expect == "" || strings.Contains(line, st.Expect) {
 		return true
 	}
 

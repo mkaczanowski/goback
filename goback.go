@@ -14,11 +14,17 @@ import (
 
 var wg sync.WaitGroup
 var fl *flasher.Flasher
+var fSystem *string
 
 func flashDevice(j *job.Job) {
 	b, no := key.Decrypt(j.Id)
 	board := flasher.Board(b)
 	prefix := "[T:" + flasher.GetBoardName(board) + " N:" + strconv.Itoa(int(no)) + "]"
+	system, err := flasher.GetSystem(*fSystem)
+
+	if err != nil{
+		log.Fatal(err)
+	}
 
 	defer func() {
 		log.Println(prefix, "[ Job ] Cleanning up")
@@ -26,7 +32,7 @@ func flashDevice(j *job.Job) {
 		wg.Done()
 	}()
 
-	quit, out := fl.FlashBoard(board, no)
+	quit, out := fl.FlashBoard(board, no, system)
 
 	log.Println(prefix, "[ Job ] Start")
 forever:
@@ -70,8 +76,14 @@ func getKey(board string) uint {
 func main() {
 	log.SetFlags(0)
 	fBoards := flag.String("boards", "", "List boards to flash")
+	fSystem = flag.String("system", "ubuntu", "Choose system [Ubuntu|Fedora]")
 	fAction := flag.String("action", "flash", "What do you want to do? [flash, power_[on|off|switch]]")
+	fDebug := flag.Bool("debug", false, "Set true to print serial console output")
 	flag.Parse()
+
+	if *fDebug == true {
+		flasher.Debug = true
+	}
 
 	switch *fAction {
 	case "flash":

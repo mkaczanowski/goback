@@ -19,6 +19,17 @@ func GetOdroidStepList(w *bufio.Writer, c *step.StepConfig) *step.StepList {
 		Msg:     "Enter u-boot console",
 		Timeout: 10 * time.Second,
 	}
+	
+	stSetBootarg := &step.Step{
+		OnTrigger: func() {
+			// Double \n -> uboot bug
+			util.MustSendCmd(w, "setenv bootargs \"console=tty1 console=ttySAC1,115200n8 smsc95xx.macaddr="+c.MacAddr+" root=UUID=e139ce78-9841-40fe-8823-96a304a09859 rootwait ro mem=2047M\"", true)
+			util.MustSendCmd(w, "saveenv", true)
+		},
+		Expect:    "done",
+		Msg:       "Set Bootargs",
+		SendProbe: true,
+	}
 
 	stStartEthernet := &step.Step{
 		OnTrigger: func() {
@@ -133,7 +144,7 @@ func GetOdroidStepList(w *bufio.Writer, c *step.StepConfig) *step.StepList {
 		OnTrigger: func() {
 			util.MustSendCmd(w, "reboot", true)
 		},
-		Expect:    "Mounting root file system",
+		Expect:    "mounted filesystem",
 		Msg:       "Reboot",
 		SendProbe: true,
 	   	Timeout:   20 * time.Second,
@@ -143,30 +154,18 @@ func GetOdroidStepList(w *bufio.Writer, c *step.StepConfig) *step.StepList {
 		OnTrigger: func() {
 			util.MustSendCmd(w, "resize2fs /dev/mmcblk0p2 && touch /forcefsck && stat /forcefsck", true)
 		},
-		Trigger:    "Stopping save kernel messages",
+		Trigger:   "localhost login|root@|ubuntu.com",
 		Expect:    "empty file",
 		Msg:       "Resize FS",
-		SendProbe: true,
-		Timeout:   20 * time.Second,
-	}
-
-	stFinalReboot := &step.Step{
-		OnTrigger: func() {
-			util.MustSendCmd(w, "", true)
-			util.MustSendCmd(w, "reboot", true)
-		},
-		Expect:    "Mounting root file system",
-		Msg:       "Final reboot",
 		SendProbe: true,
 		Timeout:   40 * time.Second,
 	}
 
 	stPostinstall := &step.Step{
 		OnTrigger: func() {
-			util.MustSendCmd(w, "", true)
-			util.MustSendCmd(w, "wget http://beagle/postinstall/odroid/install.sh -O i.sh && chmod +x i.sh && ./i.sh >> /tmp/i.log 2>&1", true)
+			util.MustSendCmd(w, "curl http://beagle/postinstall/odroid/install.sh > i.sh && chmod +x i.sh && ./i.sh "+c.MacAddr+" "+c.Hostname+" >>/tmp/i.log 2>&1", true)
 		},
-		Trigger:   "Stopping save kernel messages",
+		Trigger:   "localhost login|root@|ubuntu.com",
 		Expect:    "",
 		Msg:       "Started postinstall",
 		SendProbe: true,
@@ -175,6 +174,7 @@ func GetOdroidStepList(w *bufio.Writer, c *step.StepConfig) *step.StepList {
 
 	stepList := step.NewList()
 	stepList.Append(stEnterUboot)
+	stepList.Append(stSetBootarg)
 	stepList.Append(stSetEnv)
 	stepList.Append(stStartEthernet)
 	stepList.Append(stLoadKernel)
@@ -187,7 +187,7 @@ func GetOdroidStepList(w *bufio.Writer, c *step.StepConfig) *step.StepList {
 	//stepList.Append(stUpdateUboot)
 	stepList.Append(stReboot)
 	stepList.Append(stResizeFS)
-	stepList.Append(stFinalReboot)
+	stepList.Append(stReboot.Clone())
 	stepList.Append(stPostinstall)
 
 	return stepList

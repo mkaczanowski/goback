@@ -11,14 +11,22 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"errors"
 )
 
+type System uint
 type Board uint
+var Debug bool
 
 const (
 	ODROID     Board = 1
 	PARALLELLA Board = 2
 	WANDBOARD  Board = 3
+)
+
+const (
+	UBUNTU System = 1
+	FEDORA System = 2
 )
 
 type ttyConfiguration struct {
@@ -38,6 +46,28 @@ func NewFlasher(ttyConfig string) *Flasher {
 	return fl
 }
 
+func GetSystemName(sys System) string {
+	switch sys {
+	case UBUNTU:
+		return "ubuntu"
+	case FEDORA:
+		return "fedora"
+	}
+
+	return "Invalid sys type provided"
+}
+
+func GetSystem(sys string) (System, error) {
+	switch sys {
+	case "ubuntu":
+		return UBUNTU, nil
+	case "fedora":
+		return FEDORA, nil
+	}
+
+	return System(0), errors.New("Invalid system name")
+}
+
 func GetBoardName(no Board) string {
 	switch no {
 	case ODROID:
@@ -51,22 +81,26 @@ func GetBoardName(no Board) string {
 	return "Invalid board type provided"
 }
 
-func (fl *Flasher) FlashBoard(b Board, n uint) (quit chan bool, out chan string) {
+func (fl *Flasher) FlashBoard(b Board, n uint, sys System) (quit chan bool, out chan string) {
 	quit = make(chan bool)
 	out = make(chan string)
 
+	if Debug == true {
+		util.Debug = true
+	}
+
 	switch b {
 	case ODROID:
-		go fl.flashOdroid(quit, out, n)
+		go fl.flashOdroid(quit, out, n, sys)
 	case WANDBOARD:
-		go fl.flashWandboard(quit, out, n)
+		go fl.flashWandboard(quit, out, n, sys)
 	case PARALLELLA:
-		go fl.flashParallella(quit, out, n)
+		go fl.flashParallella(quit, out, n, sys)
 	}
 	return quit, out
 }
 
-func (fl *Flasher) flashOdroid(quit chan bool, out chan string, n uint) {
+func (fl *Flasher) flashOdroid(quit chan bool, out chan string, n uint, sys System) {
 	tty := fl.ttyConfig.ODROID
 
 	if n > uint(len(tty)) {
@@ -77,11 +111,12 @@ func (fl *Flasher) flashOdroid(quit chan bool, out chan string, n uint) {
 
 	conf := &step.StepConfig{
 		ServerAddr:    "192.168.4.2",
-		ImageFilename: "odroid/odroid.img.xz",
+		ImageFilename: "odroid/"+GetSystemName(sys)+".img.xz",
 		Device:        "/dev/mmcblk0",
 		UbootTar:      "odroid/odroid_uboot.tar.gz",
 		IpAddr:        "192.168.4.4" + strconv.Itoa((int(n))),
 		MacAddr:       "00:10:75:2A:AE:C" + strconv.Itoa((int(n))),
+		Hostname:      "odroid"+strconv.Itoa((int(n))),
 	}
 
 	// Initialize serial line
@@ -111,7 +146,7 @@ func (fl *Flasher) flashOdroid(quit chan bool, out chan string, n uint) {
 	start(boardName, out, stepList, reader, writer)
 }
 
-func (fl *Flasher) flashWandboard(quit chan bool, out chan string, n uint) {
+func (fl *Flasher) flashWandboard(quit chan bool, out chan string, n uint, sys System) {
 	tty := fl.ttyConfig.WANDBOARD
 
 	if n > uint(len(tty)) {
@@ -122,10 +157,11 @@ func (fl *Flasher) flashWandboard(quit chan bool, out chan string, n uint) {
 
 	conf := &step.StepConfig{
 		ServerAddr:    "192.168.4.2",
-		ImageFilename: "wand/wandboard.img.xz",
+		ImageFilename: "wand/"+GetSystemName(sys)+".img.xz",
 		Device:        "/dev/mmcblk0",
 		IpAddr:        "192.168.4.5" + strconv.Itoa((int(n))),
 		MacAddr:       "00:10:75:2A:AE:D" + strconv.Itoa((int(n))),
+		Hostname:      "wandboard"+strconv.Itoa((int(n))),
 	}
 
 	// Initialize serial line
@@ -155,7 +191,7 @@ func (fl *Flasher) flashWandboard(quit chan bool, out chan string, n uint) {
 	start(boardName, out, stepList, reader, writer)
 }
 
-func (fl *Flasher) flashParallella(quit chan bool, out chan string, n uint) {
+func (fl *Flasher) flashParallella(quit chan bool, out chan string, n uint, sys System) {
 	tty := fl.ttyConfig.PARALLELLA
 
 	if n > uint(len(tty)) {
@@ -166,10 +202,11 @@ func (fl *Flasher) flashParallella(quit chan bool, out chan string, n uint) {
 
 	conf := &step.StepConfig{
 		ServerAddr:    "192.168.4.2",
-		ImageFilename: "parallella/parallella.img.xz",
+		ImageFilename: "parallella/"+GetSystemName(sys)+".img.xz",
 		Device:        "/dev/mmcblk0",
 		IpAddr:        "192.168.4.6" + strconv.Itoa((int(n))),
 		MacAddr:       "00:10:75:2A:AE:E" + strconv.Itoa((int(n))),
+		Hostname:      "parallella"+strconv.Itoa((int(n))),
 	}
 
 	// Initialize serial line
@@ -219,6 +256,10 @@ loop:
 		case line, ok := <-serialOutput:
 			if !ok {
 				break loop
+			}
+
+			if Debug {
+				out <- line
 			}
 
 			curStep.CheckTrigger(line)
