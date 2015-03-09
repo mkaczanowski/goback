@@ -114,8 +114,8 @@ func (fl *Flasher) flashOdroid(quit chan bool, out chan string, n uint, sys Syst
 		ImageFilename: "odroid/"+GetSystemName(sys)+".img.xz",
 		Device:        "/dev/mmcblk0",
 		UbootTar:      "odroid/odroid_uboot.tar.gz",
-		IpAddr:        "192.168.4.4" + strconv.Itoa((int(n))),
-		MacAddr:       "00:10:75:2A:AE:C" + strconv.Itoa((int(n))),
+		IpAddr:        "192.168.4.10" + strconv.Itoa((int(n))),
+		MacAddr:       "82:CA:BC:0A:FE:3" + strconv.Itoa((int(n))),
 		Hostname:      "odroid"+strconv.Itoa((int(n))),
 	}
 

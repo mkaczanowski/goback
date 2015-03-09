@@ -19,22 +19,11 @@ func GetOdroidStepList(w *bufio.Writer, c *step.StepConfig) *step.StepList {
 		Msg:     "Enter u-boot console",
 		Timeout: 10 * time.Second,
 	}
-	
-	stSetBootarg := &step.Step{
-		OnTrigger: func() {
-			// Double \n -> uboot bug
-			util.MustSendCmd(w, "setenv bootargs \"console=tty1 console=ttySAC1,115200n8 smsc95xx.macaddr="+c.MacAddr+" root=UUID=e139ce78-9841-40fe-8823-96a304a09859 rootwait ro mem=2047M\"", true)
-			util.MustSendCmd(w, "saveenv", true)
-		},
-		Expect:    "done",
-		Msg:       "Set Bootargs",
-		SendProbe: true,
-	}
 
 	stStartEthernet := &step.Step{
 		OnTrigger: func() {
 			// Double \n -> uboot bug
-			util.MustSendCmd(w, "usb start\n", true)
+			util.MustSendCmd(w, "usb start", true)
 		},
 		Expect:    "1 Ethernet Device(s) found",
 		Msg:       "USB Ethernet start",
@@ -163,7 +152,7 @@ func GetOdroidStepList(w *bufio.Writer, c *step.StepConfig) *step.StepList {
 
 	stPostinstall := &step.Step{
 		OnTrigger: func() {
-			util.MustSendCmd(w, "curl http://beagle/postinstall/odroid/install.sh > i.sh && chmod +x i.sh && ./i.sh "+c.MacAddr+" "+c.Hostname+" >>/tmp/i.log 2>&1", true)
+			util.MustSendCmd(w, "curl http://"+c.ServerAddr+"/postinstall/odroid/install.sh > i.sh && chmod +x i.sh && ./i.sh "+c.MacAddr+" "+c.Hostname+" >>/tmp/i.log 2>&1", true)
 		},
 		Trigger:   "localhost login|root@|ubuntu.com",
 		Expect:    "",
@@ -174,7 +163,6 @@ func GetOdroidStepList(w *bufio.Writer, c *step.StepConfig) *step.StepList {
 
 	stepList := step.NewList()
 	stepList.Append(stEnterUboot)
-	stepList.Append(stSetBootarg)
 	stepList.Append(stSetEnv)
 	stepList.Append(stStartEthernet)
 	stepList.Append(stLoadKernel)
