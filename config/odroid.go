@@ -152,7 +152,7 @@ func GetOdroidStepList(w *bufio.Writer, c *step.StepConfig) *step.StepList {
 
 	stPostinstall := &step.Step{
 		OnTrigger: func() {
-			util.MustSendCmd(w, "curl http://"+c.ServerAddr+"/postinstall/odroid/install.sh > i.sh && chmod +x i.sh && ./i.sh "+c.MacAddr+" "+c.Hostname+" >>/tmp/i.log 2>&1", true)
+			util.MustSendCmd(w, "curl http://"+c.ServerAddr+"/postinstall/odroid/install.sh > i.sh && chmod +x i.sh && ./i.sh "+c.MacAddr+" "+c.Hostname+" "+c.IpAddr+" >>/tmp/i.log 2>&1 &", true)
 		},
 		Trigger:   "localhost login|root@|ubuntu.com",
 		Expect:    "",
